@@ -18,11 +18,21 @@ void PANIC(char* msg);
 /*--------------------------------------------------------------------*/
 /*--- Child - echo server                                         ---*/
 /*--------------------------------------------------------------------*/
+void programcommand(int client, char* command, int* bytes_read){
+    int i;
+char* arg1st = strtok(command, " \n");
+   if(strcmp(command,"QUIT") == 0 ||strcmp(command,"quit") == 0 ){
+            send(client,"Goodbye!\n", 9, 0);
+            close(client);
+            *bytes_read = 0;
+            return;
+        }
+}
 void* Child(void* arg)
 {   char line[DEFAULT_BUFLEN];
     int bytes_read;
     int client = *(int *)arg;
-     send(client, "Welcome to Oghenemano omogha server\n", 27, 0);
+     send(client, "Welcome to Oghenemanoserver\n", 27, 0);
 
     do
     {
@@ -32,6 +42,7 @@ void* Child(void* arg)
                         printf("Send failed\n");
                         break;
                 }
+                 programcommand(client, line, &bytes_read);
         } else if (bytes_read == 0 ) {
                 printf("Connection closed by client\n");
                 break;
