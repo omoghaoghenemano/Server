@@ -7,10 +7,14 @@
 #include <resolv.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <dirent.h> 
+
 
 /* Definations */
-#define DEFAULT_BUFLEN 1024
-#define PORT 2677
+#define DEFAULT_BUFLEN 6024
+
+#define PORT 1888
+
 
 void PANIC(char* msg);
 #define PANIC(msg)  { perror(msg); exit(-1); }
@@ -21,18 +25,43 @@ void PANIC(char* msg);
 void programcommand(int client, char* command, int* bytes_read){
     int i;
 char* arg1st = strtok(command, " \n");
+char users[DEFAULT_BUFLEN];
+char pass[DEFAULT_BUFLEN];
+  char getfilename[DEFAULT_BUFLEN];
    if(strcmp(command,"QUIT") == 0 ||strcmp(command,"quit") == 0 ){
             send(client,"Goodbye!\n", 9, 0);
             close(client);
             *bytes_read = 0;
             return;
         }
+        else if(strcmp(command, "LIST")==0){
+             DIR *d;
+  struct dirent *directory;
+  d = opendir(".");
+  if (d) {
+    while ((directory = readdir(d)) != NULL) {
+     
+       send(client,directory->d_name, strlen(directory->d_name), 0);
+        send(client, "\n", 2, 0);
+    }
+    closedir(d);
+    return;
+  }
+        }
+        
+       
+
+    
+          
 }
+
+
 void* Child(void* arg)
 {   char line[DEFAULT_BUFLEN];
     int bytes_read;
     int client = *(int *)arg;
      send(client, "Welcome to Oghenemanoserver\n", 27, 0);
+       send(client, "\n", 2, 0);
 
     do
     {
