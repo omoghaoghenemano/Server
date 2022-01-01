@@ -9,10 +9,19 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+
+
+#include <errno.h>    //for error handling
+
 
 #define DEFAULT_BUFLEN 1024
 
-#define PORT 2676
+#define PORT 2671
 
 void PANIC(char *msg);
 #define PANIC(msg)   \
@@ -35,6 +44,7 @@ void uploadfile(FILE *fp, int sockfd)
         bzero(type, 1050);
     }
 }
+
 struct getuserdata
 {
     char *usernames;
@@ -64,15 +74,13 @@ char *lastN(char *str, size_t n)
 }
 void programcommand(int client)
 {
-    int length;
-
-    int temp[DEFAULT_BUFLEN];
-    int countrow;
+    int temp[DEFAULT_BUFLEN], countrow, receivebufferlen = DEFAULT_BUFLEN;
     FILE *fp;
     char receivebuffer[1024];
-    int receivebufferlen = DEFAULT_BUFLEN;
+
     do
     {
+        char sizeofh[DEFAULT_BUFLEN] = {0};
         memset(receivebuffer, 0, strlen(receivebuffer));
         memcpy(temp, receivebuffer, strlen(receivebuffer));
         countrow = recv(client, receivebuffer, receivebufferlen, 0);
@@ -106,7 +114,15 @@ void programcommand(int client)
                 closedir(v);
             }
         }
-        
+       
+        else if ((countrow > 0 && strcmp(recvcmd, "QUIT") == 0) || (countrow > 0 && strcmp(recvcmd, "quit") == 0))
+        {
+
+            char *bye = "Goodbye\n";
+            send(client, bye, strlen(bye), 0);
+            close(client);
+        }
+
     } while (countrow > 0);
 }
 
@@ -115,6 +131,7 @@ int authentication(int client, char *command, int *bytes_read)
     int i;
     int num = 0;
     char *arg1st = strtok(command, " \n");
+
     if (strcmp(arg1st, "USER") == 0)
     {
         char *dataToSend = strtok(NULL, "\n");
@@ -190,57 +207,122 @@ void *Child(void *arg)
 }
 
 int main(int argc, char *argv[])
-{
-    int sd, opt, optval;
-    struct sockaddr_in addr;
-    unsigned short port = 0;
+{ 
+    int parentfd;                 
+    int *childfd;                 
+    int portno;  
+    char *password;                  
+    int clilen;                 
+    struct sockaddr_in serveraddr; 
+    struct sockaddr_in clientaddr; 
+    struct hostent *hostp;         
+    char *hostaddrp;              
+    int optval;                 
+    int n;       
+    int flags, opt;
+    int nsecs, tfnd;                  
 
-    while ((opt = getopt(argc, argv, "p:")) != -1)
+    pthread_t thread;
+
+  if (argc != 8)
     {
-        switch (opt)
-        {
+        printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+        exit(1);
+    }
+
+
+ portno = atoi(argv[3]); 
+
+ char *passworder = argv[7];
+ char * directorys = argv[5];
+ if (chdir(directorys) != 0) {
+	    		perror("chdir() failed"); 
+	    		
+			}
+            
+ 
+ 
+    while ((opt = getopt(argc, argv, "pdu:")) != -1) {
+        switch (opt) {
+         
         case 'p':
-            port = atoi(optarg);
+            
+   
+  
+
             break;
+            case 'd':
+            break;
+
+            case 'u':
+
+           
+            
+            break;
+       
+         default: /* '?' */
+           printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+            exit(EXIT_FAILURE);
         }
     }
+if(strcmp(passworder,"password.txt")==0){
+    
+ 
 
-    if ((sd = socket(PF_INET, SOCK_STREAM, 0)) < 0)
-        PANIC("Socket");
-    addr.sin_family = AF_INET;
 
-    if (port > 0)
-        addr.sin_port = htons(port);
-    else
-        addr.sin_port = htons(PORT);
+   if (optind >= argc) {
+        fprintf(stderr, "Expected argument after options\n");
+        exit(EXIT_FAILURE);
+    }
 
-    addr.sin_addr.s_addr = INADDR_ANY;
 
-    // set SO_REUSEADDR on a socket to true (1):
+
+ 
+
+    parentfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (parentfd < 0)
+        error("ERROR opening socket");
+
     optval = 1;
-    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+    setsockopt(parentfd, SOL_SOCKET, SO_REUSEADDR,
+               (const void *)&optval, sizeof(int));
 
-    if (bind(sd, (struct sockaddr *)&addr, sizeof(addr)) != 0)
-        PANIC("Bind");
-    if (listen(sd, SOMAXCONN) != 0)
-        PANIC("Listen");
+    bzero((char *)&serveraddr, sizeof(serveraddr));
 
-    printf("System ready on port %d\n", ntohs(addr.sin_port));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddr.sin_port = htons((unsigned short)portno);
+    
 
-    while (1)
+    if (bind(parentfd, (struct sockaddr *)&serveraddr,
+             sizeof(serveraddr)) < 0)
+        error("ERROR on binding");
+
+    if (listen(parentfd, 0) < 0) /* allow 5 requests to queue up */
+        error("ERROR on listen");
+
+
+    clilen = sizeof(clientaddr);
+    while (true)
     {
-        int client, addr_size = sizeof(addr);
-        pthread_t child;
-
-        client = accept(sd, (struct sockaddr *)&addr, &addr_size);
-        printf("Connected: %s:%d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-        if (pthread_create(&child, NULL, Child, &client) != 0)
+        int childfd;
+            printf("server listening on localhost port %d\n",ntohs(serveraddr.sin_port));
+       
+        childfd = accept(parentfd, (struct sockaddr *)&clientaddr, (socklen_t *)&clilen);
+        if (childfd < 0 )
         {
-
-            perror("Thread creation");
+            if(errno!=EINTR)
+                error("ERROR on accept");
+            else
+                continue;
         }
-        else
-            pthread_detach(child); /* disassociate from parent */
+
+        
+        
+  
+        pthread_create(&thread, NULL, &Child, &childfd);
     }
+}
     return 0;
 }
