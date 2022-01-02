@@ -48,7 +48,38 @@ struct getuserdata
     char *usernames;
     char *passwords;
 };
+void testing(int fd){
+    int length,rcnt,optval;
+char recvbuf[DEFAULT_BUFLEN],bmsg[DEFAULT_BUFLEN];
+int  recvbuflen = DEFAULT_BUFLEN;
+   do {
+        // Clear Receive buffer
+        memset( &recvbuf, '\0', sizeof(recvbuf) );
+        rcnt = recv(fd, recvbuf, recvbuflen, 0);
+        if (rcnt > 0) {
+            printf("Bytes received: %d\n", rcnt);
 
+        // Echo the buffer back to the sender
+        rcnt = send( fd, recvbuf, rcnt, 0 );
+        if(strcmp(recvbuf,"mano\n")==0){
+            printf("it kinda worked");
+
+        }
+            if (rcnt < 0) {
+                printf("Send failed:\n");
+                close(fd);
+                break;
+            }
+            printf("Bytes sent: %d\n", rcnt);
+        } else if (rcnt == 0)
+            printf("Connection closing...\n");
+        else  {
+            printf("Receive failed:\n");
+            close(fd);
+            break;
+        }
+    } while (rcnt > 0);
+}
 
 char *copystring(char *d, size_t size, char *s)
 {
@@ -317,7 +348,7 @@ void *Child(void *arg)
     int client = *(int *)arg;
     char *sender = "Welcome to Bob server\n";
     send(client, sender, strlen(sender), 0);
-    send(client, "\n", 2, 0);
+    
 
     do
     {
@@ -329,7 +360,7 @@ void *Child(void *arg)
                 printf("Send failed\n");
                 break;
             }
-
+/* 
             if (authentication(client, line, &bytes_read))
             {
                 programcommand(client);
@@ -338,7 +369,8 @@ void *Child(void *arg)
             {
 
                 exit(0);
-            }
+            } */
+            testing(client);
         }
         else if (bytes_read == 0)
         {
