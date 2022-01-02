@@ -61,7 +61,25 @@ char *copystring(char *d, size_t size, char *s)
     return d;
 }
 
-
+void write_file(int sockfd){
+  int n;
+  FILE *fp;
+  char *filename = "recv.txt";
+  char buffer[DEFAULT_BUFLEN];
+ 
+  fp = fopen(filename, "w");
+  while (1) {
+    n = recv(sockfd, buffer, DEFAULT_BUFLEN, 0);
+    if (n <= 0){
+      break;
+      return;
+    }
+    fprintf(fp, "%s", buffer);
+    bzero(buffer, DEFAULT_BUFLEN);
+  }
+  return;
+}
+ 
 char *lastN(char *str, size_t n)
 {
     size_t len = strlen(str);
@@ -70,6 +88,7 @@ char *lastN(char *str, size_t n)
 void programcommand(int client)
 {
     int temp[DEFAULT_BUFLEN], countrow=1, receivebufferlen = DEFAULT_BUFLEN;
+       char data[DEFAULT_BUFLEN];
     FILE *fp;
     char receivebuffer[1024];
 
@@ -109,6 +128,90 @@ void programcommand(int client)
                 closedir(v);
             }
         }
+         else if ((countrow > 0 && strcmp(recvcmd, "PUT") == 0) || (countrow > 0 && strcmp(recvcmd, "PUT") == 0)){
+              int n;
+  FILE *fp;
+  char *filename = getcommand;
+  char mydata[DEFAULT_BUFLEN];
+  char buffer[DEFAULT_BUFLEN];
+  char mynewbuffer[DEFAULT_BUFLEN];
+
+  memset(buffer, 0, strlen(buffer));
+  char *getst = (char *)buffer;
+   int ir;
+   
+
+  fp = fopen(filename, "w");
+  while (1) {
+    n = recv(client, buffer, DEFAULT_BUFLEN, 0);
+ printf("Enter contents to store in file : \n");
+ 
+      /*   int count = 0;
+        for (count = 0; count < strlen(getst); count++)
+        {
+            if (isspace(getst[count]))
+                break;
+        }
+
+        copystring(mydata, count, getst);
+   
+ */
+strcpy(mydata, getst);
+
+
+    fputs(mydata, fp);
+
+
+    fclose(fp);
+    //check this line.
+    if(n ==0){
+       char *newdata = "400 File cannot save on server side.\n";
+
+               
+                send(client, newdata, strlen(newdata), 0);
+
+        
+
+    }
+    else{
+         char dataToSend[150] = "200 ";
+         
+         
+char con[DEFAULT_BUFLEN];
+
+
+sprintf(con,"%d",n);
+
+                strcat(dataToSend, con);
+                strcat(dataToSend, "Byte test file retrieved by server and was saved.");
+                strcat(dataToSend, "\n");
+                int i;
+                int l = 0;
+                for (i = 0; dataToSend[i] != '\0'; i++)
+                {
+                    l++;
+                }
+                send(client, dataToSend, l, 0);
+
+
+    }
+    
+
+    
+    printf("File created and saved successfully. :) \n");
+
+
+    fprintf(fp, "%s", buffer);
+    bzero(buffer, DEFAULT_BUFLEN);
+    return;
+    if (n <= 0){
+      break;
+      return;
+    }
+    
+  }
+             
+         }
         else if ((countrow > 0 && strcmp(recvcmd, "DEL") == 0) || (countrow > 0 && strcmp(recvcmd, "del") == 0))
         {
             if (remove(getcommand) == 0)
@@ -143,13 +246,48 @@ void programcommand(int client)
             }
         }
 
-      
+        else if ((countrow > 0 && strcmp(recvcmd, "GET") == 0) || (countrow > 0 && strcmp(recvcmd, "get") == 0))
+        {
+
+            fp = fopen(getcommand, "r");
+            if (fp != NULL)
+            {
+                sizeofh[DEFAULT_BUFLEN] = '\0';
+
+                while (fgets(sizeofh, 1025, fp) != NULL)
+                {
+                    if (send(client, sizeofh, sizeof(sizeofh), 0) == false)
+                    {
+
+                        exit(1);
+                    }
+                    sizeofh[DEFAULT_BUFLEN] = '\0';
+                }
+            }
+            else
+            {
+                char *notfound = "404 file not found\n";
+
+                send(client, notfound, strlen(notfound), 0);
+            }
+            if (countrow < 0)
+            {
+                printf("Send failed:\n");
+                close(client);
+                break;
+            }
+        }
         else if ((countrow > 0 && strcmp(recvcmd, "QUIT") == 0) || (countrow > 0 && strcmp(recvcmd, "quit") == 0))
         {
 
             char *bye = "Goodbye\n";
             send(client, bye, strlen(bye), 0);
-            close(client);
+            
+              
+           
+               close(client);
+          
+            return;
         }
         countrow++;
 
@@ -229,7 +367,7 @@ void *Child(void *arg)
         }
         else
         {
-            printf("Connection has problem\n");
+            printf("Connection close by client \n");
             break;
         }
     } while (bytes_read > 0);
@@ -257,7 +395,7 @@ int main(int argc, char *argv[])
 
     if (argc != 8)
     {
-        printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+        printf("usage: \n ./name server -p <portnumber> -d directory -u password file name\n");
         exit(1);
     }
 
@@ -298,7 +436,8 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
-    if (strcmp(passworder, "password.txt") == 0)
+    
+    if (access(passworder, F_OK) == 0)
     {
 
         if (optind >= argc)
@@ -346,6 +485,10 @@ int main(int argc, char *argv[])
 
             pthread_create(&thread, NULL, &Child, &childfd);
         }
+    }
+    else{
+        printf("ensure the password file is in same directory\n");
+
     }
     return 0;
 }
