@@ -48,6 +48,7 @@ struct getuserdata
     char *usernames;
     char *passwords;
 };
+//reference for copystring https://stackoverflow.com/questions/41869803/what-is-the-best-alternative-to-strncpy
 
 char *copystring(char *d, size_t size, char *s)
 {
@@ -61,36 +62,14 @@ char *copystring(char *d, size_t size, char *s)
     return d;
 }
 
-void write_file(int sockfd)
-{
-    int n;
-    FILE *fp;
-    char *filename = "recv.txt";
-    char buffer[DEFAULT_BUFLEN];
-
-    fp = fopen(filename, "w");
-    while (1)
-    {
-        n = recv(sockfd, buffer, DEFAULT_BUFLEN, 0);
-        if (n <= 0)
-        {
-            break;
-            return;
-        }
-        fprintf(fp, "%s", buffer);
-        bzero(buffer, DEFAULT_BUFLEN);
-    }
-    return;
-}
-
 char *lastN(char *str, size_t n)
 {
     size_t len = strlen(str);
     return (char *)str + len - n;
 }
-int testing(int fd)
+int testing(int client)
 {
-    
+
     int length, rcnt, optval, count;
     char recvbuf[DEFAULT_BUFLEN], bmsg[DEFAULT_BUFLEN];
     char getcommand[DEFAULT_BUFLEN], myuser[DEFAULT_BUFLEN], mypassword[DEFAULT_BUFLEN];
@@ -100,7 +79,7 @@ int testing(int fd)
     {
         // Clear Receive buffer
         memset(&recvbuf, '\0', sizeof(recvbuf));
-        rcnt = recv(fd, recvbuf, recvbuflen, 0);
+        rcnt = recv(client, recvbuf, recvbuflen, 0);
         char *recvstring = (char *)recvbuf;
         char recvcmd[4];
         if (rcnt > 0)
@@ -125,43 +104,53 @@ int testing(int fd)
             strncpy(myuser, getcommand, counttwo);
             strncpy(mypassword, getcommand + (counttwo + 1), strlen(getcommand) - count);
 
-            // Echo the buffer back to the sender
-            rcnt = send(fd, recvbuf, rcnt, 0);
             if (strcmp(recvcmd, "USER") == 0 || strcmp(recvcmd, "user") == 0)
             {
-                printf("400 a user entered command user\n");
-                if (strcmp(myuser, "mano") == 0 && strcmp(mypassword, "keno") == 0)
+                FILE *fp ;
+                int countline = 0;
+                char *val;
+
+                struct getuserdata userd;
+
+                char line[DEFAULT_BUFLEN] = {0};
+
+                if (NULL == (fp = fopen("password.txt", "r")))
                 {
-                   char *c2 = "200 User test granted to access.\n";
-
-                send(fd, c2, strlen(c2), 0);
-                
+                    perror("404 can't open file\n");
+                    exit(EXIT_FAILURE);
                 }
-                
-                return;
-            }
-            else
-        {
 
-            char *invalid = "400 User not found. Please try with another user.";
-            send(fd, invalid, strlen(invalid), 0);
-        }
-            if (rcnt < 0)
-            {
-                printf("Send failed:\n");
-                close(fd);
-                break;
+                for (; fscanf(fp, "%s", line) != EOF;)
+                {
+
+                    val = strtok(line, ":");
+                    userd.usernames = val;
+                    val = strtok(NULL, ":");
+                    if ((val) != NULL)
+                    {
+                        userd.passwords = val;
+                    }
+
+                    printf("400 a user entered command user\n");
+                    if (strcmp(myuser, userd.usernames) == 0 && strcmp(mypassword, userd.passwords) == 0)
+                    {
+                        char *c2 = "200 User test granted to access.\n";
+
+                        send(client, c2, strlen(c2), 0);
+                        return;
+                    }
+                    else
+                    {
+
+                        char *invalid = "400 User not found. Please try with another user.\n";
+                        send(client, invalid, strlen(invalid), 0);
+                    }
+                }
             }
+
             printf("Bytes sent: %d\n", rcnt);
         }
-        else if (rcnt == 0)
-            printf("Connection closing...\n");
-        else
-        {
-            printf("Receive failed:\n");
-            close(fd);
-            break;
-        }
+
     } while (rcnt > 0);
 }
 void programcommand(int client)
@@ -187,7 +176,7 @@ void programcommand(int client)
                 break;
         }
         strncpy(recvcmd, recvstring, count);
-       
+
         copystring(getcommand, strlen(recvstring) - (count + 2), recvstring + count + 1);
 
         if (strcmp(recvcmd, "LIST") == 0 || strcmp(recvcmd, "list") == 0)
@@ -224,9 +213,8 @@ void programcommand(int client)
             while (1)
             {
                 n = recv(client, buffer, DEFAULT_BUFLEN, 0);
-                
 
-                    strcpy(mydata, getst);
+                strcpy(mydata, getst);
 
                 fputs(mydata, fp);
 
@@ -267,39 +255,6 @@ void programcommand(int client)
                 return;
             }
         }
-        else if (strcmp(recvcmd, "DEL") == 0 || strcmp(recvcmd, "del") == 0)
-        {
-            if (remove(getcommand) == 0)
-            {
-
-                char dataToSend[150] = "400 ";
-                strcat(dataToSend, getcommand);
-                strcat(dataToSend, " deleted.");
-                strcat(dataToSend, "\n");
-                int i;
-                int l = 0;
-                for (i = 0; dataToSend[i] != '\0'; i++)
-                {
-                    l++;
-                }
-                send(client, dataToSend, l, 0);
-            }
-            else
-            {
-
-                char dataToSend[150] = "404 ";
-                strcat(dataToSend, getcommand);
-                strcat(dataToSend, " file not found.");
-                strcat(dataToSend, "\n");
-                int i;
-                int l = 0;
-                for (i = 0; dataToSend[i] != '\0'; i++)
-                {
-                    l++;
-                }
-                send(client, dataToSend, l, 0);
-            }
-        }
 
         else if (strcmp(recvcmd, "GET") == 0 || strcmp(recvcmd, "get") == 0)
         {
@@ -332,32 +287,6 @@ void programcommand(int client)
                 break;
             }
         }
-        else if (strcmp(recvcmd, "QUIT") == 0 || strcmp(recvcmd, "quit") == 0)
-        {
-
-            char *bye = "Goodbye\n";
-            send(client, bye, strlen(bye), 0);
-
-            close(client);
-
-            return;
-        }
-        else
-        {
-            char dataToSend[150] = "400 ";
-            strcat(dataToSend, recvcmd);
-            strcat(dataToSend, " Command not implemented");
-            strcat(dataToSend, "\n");
-            int l = 0;
-            int i;
-            for (i = 0; dataToSend[i] != '\0'; i++)
-            {
-                l++;
-            }
-            send(client, dataToSend, l, 0);
-        }
-        countrow++;
-    }
 }
 
 void *Child(void *arg)
@@ -385,8 +314,6 @@ void *Child(void *arg)
             }
             else
             {
-
-                exit(0);
             }
         }
         else if (bytes_read == 0)
