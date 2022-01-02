@@ -196,8 +196,9 @@ void programcommand(int client)
                 }
                 closedir(v);
             }
+            
         }
-        else if (strcmp(recvcmd, "PUT" == 0) || strcmp(recvcmd, "PUT") == 0)
+        else if (strcmp(recvcmd, "PUT") == 0 || strcmp(recvcmd, "put") == 0)
         {
             int n;
             FILE *fp;
@@ -214,7 +215,7 @@ void programcommand(int client)
             while (1)
             {
                 n = recv(client, buffer, DEFAULT_BUFLEN, 0);
-                printf("Enter contents to store in file : \n");
+                J
 
        
                 strcpy(mydata, getst);
@@ -223,7 +224,7 @@ void programcommand(int client)
 
                 fclose(fp);
                
-                if (n == 0)
+                if (n <= 0)
                 {
                     char *newdata = "400 File cannot save on server side.\n";
 
@@ -247,6 +248,8 @@ void programcommand(int client)
                         l++;
                     }
                     send(client, dataToSend, l, 0);
+                    break;
+                    return;
                 }
 
                 printf("File created and saved successfully. :) \n");
@@ -254,11 +257,8 @@ void programcommand(int client)
                 fprintf(fp, "%s", buffer);
                 bzero(buffer, DEFAULT_BUFLEN);
                 return;
-                if (n <= 0)
-                {
-                    break;
-                    return;
-                }
+                
+               
             }
         }
         else if ( strcmp(recvcmd, "DEL") == 0 ||  strcmp(recvcmd, "del") == 0)
@@ -295,7 +295,7 @@ void programcommand(int client)
             }
         }
 
-        else if (strcmp(recvcmd, "GET"== 0) || strcmp(recvcmd, "get") == 0)
+        else if (strcmp(recvcmd, "GET") == 0 || strcmp(recvcmd, "get") == 0)
         {
 
             fp = fopen(getcommand, "r");
@@ -335,6 +335,19 @@ void programcommand(int client)
             close(client);
 
             return;
+        }
+          else{
+            char dataToSend[150]="400 ";
+            strcat(dataToSend, recvcmd);
+            strcat(dataToSend, " Command not implemented");
+            strcat(dataToSend, "\n");
+            int l =0;
+            int i;
+            for(i=0;dataToSend[i]!='\0';i++){
+                l++;
+            }
+            send(client, dataToSend, l, 0);
+            
         }
         countrow++;
     }
