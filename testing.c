@@ -48,38 +48,7 @@ struct getuserdata
     char *usernames;
     char *passwords;
 };
-void testing(int fd){
-    int length,rcnt,optval;
-char recvbuf[DEFAULT_BUFLEN],bmsg[DEFAULT_BUFLEN];
-int  recvbuflen = DEFAULT_BUFLEN;
-   do {
-        // Clear Receive buffer
-        memset( &recvbuf, '\0', sizeof(recvbuf) );
-        rcnt = recv(fd, recvbuf, recvbuflen, 0);
-        if (rcnt > 0) {
-            printf("Bytes received: %d\n", rcnt);
 
-        // Echo the buffer back to the sender
-        rcnt = send( fd, recvbuf, rcnt, 0 );
-        if(strcmp(recvbuf,"mano\n")==0){
-            printf("it kinda worked");
-
-        }
-            if (rcnt < 0) {
-                printf("Send failed:\n");
-                close(fd);
-                break;
-            }
-            printf("Bytes sent: %d\n", rcnt);
-        } else if (rcnt == 0)
-            printf("Connection closing...\n");
-        else  {
-            printf("Receive failed:\n");
-            close(fd);
-            break;
-        }
-    } while (rcnt > 0);
-}
 
 char *copystring(char *d, size_t size, char *s)
 {
@@ -120,6 +89,70 @@ char *lastN(char *str, size_t n)
     size_t len = strlen(str);
     return (char *)str + len - n;
 }
+int testing(int fd){
+    int length,rcnt,optval,count;
+char recvbuf[DEFAULT_BUFLEN],bmsg[DEFAULT_BUFLEN];
+char getcommand[DEFAULT_BUFLEN],myuser[DEFAULT_BUFLEN],mypassword[DEFAULT_BUFLEN];
+
+int  recvbuflen = DEFAULT_BUFLEN;
+   do {
+        // Clear Receive buffer
+        memset( &recvbuf, '\0', sizeof(recvbuf) );
+        rcnt = recv(fd, recvbuf, recvbuflen, 0);
+        char * recvstring =(char *) recvbuf;
+          char recvcmd[4];
+        if (rcnt > 0) {
+            printf("Bytes received: %d\n", rcnt);
+    
+ int count = 0;
+        for (count = 0; count < strlen(recvstring); count++)
+        {
+            if (isspace(recvstring[count]))
+                break;
+        }
+ strncpy(recvcmd,recvstring,count);
+ strncpy(getcommand,  recvstring + count + 1,strlen(recvstring) - (count + 2));
+  int counttwo = 0;
+   for (counttwo = 0; counttwo < strlen(getcommand); counttwo++)
+        {
+            if (isspace(getcommand[counttwo]))
+                break;
+        }
+
+ strncpy(myuser,getcommand,counttwo);
+ strncpy(mypassword, getcommand + (counttwo + 1),strlen(getcommand) - count);
+
+        
+        
+
+
+
+        // Echo the buffer back to the sender
+        rcnt = send( fd, recvbuf, rcnt, 0 );
+        if(strcmp(recvcmd,"USER")==0||strcmp(recvcmd,"user")==0){
+            printf("it kinda worked");
+            if(strcmp(myuser,"mano")==0&&strcmp(mypassword,"keno")==0){
+                printf("good to go");
+            }
+            return;
+            
+
+        }
+            if (rcnt < 0) {
+                printf("Send failed:\n");
+                close(fd);
+                break;
+            }
+            printf("Bytes sent: %d\n", rcnt);
+        } else if (rcnt == 0)
+            printf("Connection closing...\n");
+        else  {
+            printf("Receive failed:\n");
+            close(fd);
+            break;
+        }
+    } while (rcnt > 0);
+}
 void programcommand(int client)
 {
     int temp[DEFAULT_BUFLEN], countrow = 1, receivebufferlen = DEFAULT_BUFLEN;
@@ -142,11 +175,12 @@ void programcommand(int client)
             if (isspace(recvstring[count]))
                 break;
         }
+        strncpy(recvcmd,recvstring,count);
 
-        copystring(recvcmd, count, recvstring);
+       
         copystring(getcommand, strlen(recvstring) - (count + 2), recvstring + count + 1);
 
-        if ((countrow > 0 && strcmp(recvcmd, "LIST") == 0) || (countrow > 0 && strcmp(recvcmd, "list") == 0))
+        if (strcmp(recvcmd, "LIST") == 0 || strcmp(recvcmd, "list") == 0)
         {
 
             memset(recvcmd, 0, strlen(recvcmd));
@@ -163,7 +197,7 @@ void programcommand(int client)
                 closedir(v);
             }
         }
-        else if ((countrow > 0 && strcmp(recvcmd, "PUT") == 0) || (countrow > 0 && strcmp(recvcmd, "PUT") == 0))
+        else if (strcmp(recvcmd, "PUT" == 0) || strcmp(recvcmd, "PUT") == 0)
         {
             int n;
             FILE *fp;
@@ -227,7 +261,7 @@ void programcommand(int client)
                 }
             }
         }
-        else if ((countrow > 0 && strcmp(recvcmd, "DEL") == 0) || (countrow > 0 && strcmp(recvcmd, "del") == 0))
+        else if ( strcmp(recvcmd, "DEL") == 0 ||  strcmp(recvcmd, "del") == 0)
         {
             if (remove(getcommand) == 0)
             {
@@ -261,7 +295,7 @@ void programcommand(int client)
             }
         }
 
-        else if ((countrow > 0 && strcmp(recvcmd, "GET") == 0) || (countrow > 0 && strcmp(recvcmd, "get") == 0))
+        else if (strcmp(recvcmd, "GET"== 0) || strcmp(recvcmd, "get") == 0)
         {
 
             fp = fopen(getcommand, "r");
@@ -292,7 +326,7 @@ void programcommand(int client)
                 break;
             }
         }
-        else if ((countrow > 0 && strcmp(recvcmd, "QUIT") == 0) || (countrow > 0 && strcmp(recvcmd, "quit") == 0))
+        else if (strcmp(recvcmd, "QUIT") == 0 || strcmp(recvcmd, "quit") == 0)
         {
 
             char *bye = "Goodbye\n";
@@ -360,8 +394,8 @@ void *Child(void *arg)
                 printf("Send failed\n");
                 break;
             }
-/* 
-            if (authentication(client, line, &bytes_read))
+
+            if (  testing(client))
             {
                 programcommand(client);
             }
@@ -369,8 +403,8 @@ void *Child(void *arg)
             {
 
                 exit(0);
-            } */
-            testing(client);
+            }
+          
         }
         else if (bytes_read == 0)
         {
