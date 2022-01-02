@@ -255,6 +255,39 @@ void programcommand(int client)
                 return;
             }
         }
+        else if (strcmp(recvcmd, "DEL") == 0 || strcmp(recvcmd, "del") == 0)
+        {
+            if (remove(getcommand) == 0)
+            {
+
+                char dataToSend[150] = "400 ";
+                strcat(dataToSend, getcommand);
+                strcat(dataToSend, " deleted.");
+                strcat(dataToSend, "\n");
+                int i;
+                int l = 0;
+                for (i = 0; dataToSend[i] != '\0'; i++)
+                {
+                    l++;
+                }
+                send(client, dataToSend, l, 0);
+            }
+            else
+            {
+
+                char dataToSend[150] = "404 ";
+                strcat(dataToSend, getcommand);
+                strcat(dataToSend, " file not found.");
+                strcat(dataToSend, "\n");
+                int i;
+                int l = 0;
+                for (i = 0; dataToSend[i] != '\0'; i++)
+                {
+                    l++;
+                }
+                send(client, dataToSend, l, 0);
+            }
+        }
 
         else if (strcmp(recvcmd, "GET") == 0 || strcmp(recvcmd, "get") == 0)
         {
