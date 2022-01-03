@@ -42,6 +42,12 @@ void uploadfile(FILE *fp, int sockfd)
         bzero(type, 1050);
     }
 }
+struct numbers {
+  int commands;
+  char *args;
+  
+};
+
 
 struct getuserdata
 {
@@ -320,6 +326,32 @@ void programcommand(int client)
                 break;
             }
         }
+        else if (strcmp(recvcmd, "QUIT") == 0 || strcmp(recvcmd, "quit") == 0)
+        {
+
+            char *bye = "Goodbye\n";
+            send(client, bye, strlen(bye), 0);
+
+            close(client);
+
+            return;
+        }
+        else
+        {
+            char dataToSend[150] = "400 ";
+            strcat(dataToSend, recvcmd);
+            strcat(dataToSend, " Command not implemented");
+            strcat(dataToSend, "\n");
+            int l = 0;
+            int i;
+            for (i = 0; dataToSend[i] != '\0'; i++)
+            {
+                l++;
+            }
+            send(client, dataToSend, l, 0);
+        }
+        countrow++;
+    }
 }
 
 void *Child(void *arg)
@@ -327,6 +359,11 @@ void *Child(void *arg)
     char line[DEFAULT_BUFLEN];
     int bytes_read;
     int client = *(int *)arg;
+    
+    struct numbers g;
+    printf("%d",g.commands);
+
+  
     char *sender = "Welcome to Bob server\n";
     send(client, sender, strlen(sender), 0);
 
@@ -373,6 +410,7 @@ int main(int argc, char *argv[])
     int clilen;
     struct sockaddr_in serveraddr;
     struct sockaddr_in clientaddr;
+   struct numbers *argss = malloc(sizeof(*argss));
     struct hostent *hostp;
     char *hostaddrp;
     int optval;
@@ -390,6 +428,8 @@ int main(int argc, char *argv[])
 
     portno = atoi(argv[3]);
     char *servervalidation = argv[1];
+   
+   
     if (strcmp(servervalidation, "server") == 0)
     {
     }
@@ -400,6 +440,7 @@ int main(int argc, char *argv[])
     }
     char *passworder = argv[7];
     char *directorys = argv[5];
+     argss->args=passworder;
     if (chdir(directorys) != 0)
     {
         perror("this is not a directory");
@@ -458,12 +499,13 @@ int main(int argc, char *argv[])
             error("ERROR on listen");
 
         clilen = sizeof(clientaddr);
-        while (true)
+        while (1)
         {
             int childfd;
             printf("server listening on localhost port %d\n", ntohs(serveraddr.sin_port));
 
             childfd = accept(parentfd, (struct sockaddr *)&clientaddr, (socklen_t *)&clilen);
+             argss->commands=childfd;
             if (childfd < 0)
             {
                 if (errno != EINTR)
@@ -471,8 +513,10 @@ int main(int argc, char *argv[])
                 else
                     continue;
             }
-
+          
             pthread_create(&thread, NULL, &Child, &childfd);
+            pthread_join (thread, (void**)&argss);
+          
         }
     }
     else
