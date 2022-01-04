@@ -359,20 +359,71 @@ void programcommand(int client)
     }
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 int server, client;
 struct sockaddr_in local_addr;
 struct sockaddr_in remote_addr;
 int length,fd,rcnt,optval;
 pid_t pid;
-
+ int *childfd;
+    int portno;
+    char *password;
+  int flags, opt;
+   int clilen;
+  
+    int nsecs, tfnd;
 /* Open socket descriptor */
 if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) { 
     perror("Can't create socket!");
     return(1);
 }
+  if (argc != 8)
+    {
+        printf("usage: \n ./name server -p <portnumber> -d directory -u password file name\n");
+        exit(1);
+    }
+     portno = atoi(argv[3]);
+    char *servervalidation = argv[1];
+    if (strcmp(servervalidation, "server") == 0)
+    {
 
+    }
+    else
+    {
+        printf("for first argument please enter: server\n");
+        exit(1);
+    }
+    char *passworder = argv[7];
+    char *directorys = argv[5];
+    if (chdir(directorys) != 0)
+    {
+        
+        perror("this is not a directory");
+    }
+
+    while ((opt = getopt(argc, argv, "pdu:")) != -1)
+    {
+        switch (opt)
+        {
+
+        case 'p':
+
+            break;
+        case 'd':
+            break;
+
+        case 'u':
+
+            break;
+
+        default: /* '?' */
+            printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+  if (access(passworder, F_OK) == 0)
+    {
 
 /* Fill local and remote address structure with zero */
 memset( &local_addr, 0, sizeof(local_addr) );
@@ -381,7 +432,7 @@ memset( &remote_addr, 0, sizeof(remote_addr) );
 /* Set values to local_addr structure */
 local_addr.sin_family = AF_INET;
 local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-local_addr.sin_port = htons(PORT);
+local_addr.sin_port = htons(portno);
 
 // set SO_REUSEADDR on a socket to true (1):
 optval = 1;
@@ -399,7 +450,7 @@ if ( listen( server, SOMAXCONN ) < 0 ) {
         exit(1);
 }
 
-printf("Concurrent  socket server now starting on port %d\n",PORT);
+printf("Concurrent  socket server now starting on port %d\n",portno);
 printf("Wait for connection\n");
 
 while(1) {  // main accept() loop
@@ -428,5 +479,12 @@ while(1) {  // main accept() loop
 
 // Final Cleanup
 close(server);
+    }
+    else{
+        printf("can't  find  %s file \n",passworder);
+            printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+            exit(EXIT_FAILURE);
+
+    }
 
 }
