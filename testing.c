@@ -78,7 +78,7 @@ char *lastN(char *str, size_t n)
     size_t len = strlen(str);
     return (char *)str + len - n;
 }
-int testing(int client)
+int testing(int client,char *passwordfile)
 {
 
     int length, rcnt, optval, count;
@@ -125,7 +125,7 @@ int testing(int client)
 
                 char line[DEFAULT_BUFLEN] = {0};
 
-                if (NULL == (fp = fopen("password.txt", "r")))
+                if (NULL == (fp = fopen(passwordfile, "r")))
                 {
                     perror("404 can't open file\n");
                     exit(EXIT_FAILURE);
@@ -396,11 +396,17 @@ if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
     }
     char *passworder = argv[7];
     char *directorys = argv[5];
+
     if (chdir(directorys) != 0)
     {
+           
         
         perror("this is not a directory");
     }
+        char *passworddir = directorys;
+        char *copynew; 
+        strcat(passworddir,"/");
+        strcat(passworddir,passworder);
 
     while ((opt = getopt(argc, argv, "pdu:")) != -1)
     {
@@ -422,8 +428,9 @@ if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
             exit(EXIT_FAILURE);
         }
     }
-  if (access(passworder, F_OK) == 0)
+  if (access(passworddir, F_OK) == 0)
     {
+        
 
 /* Fill local and remote address structure with zero */
 memset( &local_addr, 0, sizeof(local_addr) );
@@ -467,7 +474,7 @@ while(1) {  // main accept() loop
     /* If fork create Child, take control over child and close on server side */
     if ((pid=fork()) == 0) {
         close(server);
-        if(testing(fd)){
+        if(testing(fd,passworddir)){
             programcommand(fd);
         }
         printf("Child finished their job!\n");
