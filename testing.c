@@ -17,32 +17,42 @@
 
 #include <errno.h> //for error handling
 
-#define DEFAULT_BUFLEN 1024
 
-#define PORT 2671
+/* Definations */
+#define DEFAULT_BUFLEN 512
+#define PORT 2131
 
-void PANIC(char *msg);
-#define PANIC(msg)   \
-    {                \
-        perror(msg); \
-        exit(-1);    \
-    }
 
-void uploadfile(FILE *fp, int sockfd)
-{
-    char type[1050] = {0};
+void do_job(int fd) {
+int length,rcnt;
+char recvbuf[DEFAULT_BUFLEN],bmsg[DEFAULT_BUFLEN];
+int  recvbuflen = DEFAULT_BUFLEN;
 
-    while (fgets(type, 1050, fp) != NULL)
-    {
-        if (send(sockfd, type, sizeof(type, 0) == -1, 0))
-        {
+    // Receive until the peer shuts down the connection
+    do {
+        rcnt = recv(fd, recvbuf, recvbuflen, 0);
+        if (rcnt > 0) {
+            printf("Bytes received: %d\n", rcnt);
 
-            exit(1);
+        // Echo the buffer back to the sender
+        rcnt = send( fd, recvbuf, rcnt, 0 );
+            if (rcnt < 0) {
+                printf("Send failed:\n");
+                close(fd);
+                break;
+            }
+            printf("Bytes sent: %d\n", rcnt);
+
         }
-        bzero(type, 1050);
-    }
+        else if (rcnt == 0)
+            printf("Connection closing...\n");
+        else  {
+            printf("Receive failed:\n");
+            close(fd);
+            break;
+        }
+    } while (rcnt > 0);
 }
-
 struct getuserdata
 {
     char *usernames;
@@ -349,163 +359,74 @@ void programcommand(int client)
     }
 }
 
-void *Child(void *arg)
+int main()
 {
-    char line[DEFAULT_BUFLEN];
-    int bytes_read;
-    int client = *(int *)arg;
-    char *sender = "Welcome to Bob server\n";
-    send(client, sender, strlen(sender), 0);
+int server, client;
+struct sockaddr_in local_addr;
+struct sockaddr_in remote_addr;
+int length,fd,rcnt,optval;
+pid_t pid;
 
-    do
-    {
-        bytes_read = recv(client, line, sizeof(line), 0);
-        if (bytes_read > 0)
-        {
-            if ((bytes_read = send(client, line, bytes_read, 0)) < 0)
-            {
-                printf("Send failed\n");
-                break;
-            }
-
-            if (testing(client))
-            {
-                programcommand(client);
-            }
-            else
-            {
-            }
-        }
-        else if (bytes_read == 0)
-        {
-            printf("Connection closed by client\n");
-            break;
-        }
-        else
-        {
-            printf("Connection close by client \n");
-            break;
-        }
-    } while (bytes_read > 0);
-    close(client);
-    return arg;
+/* Open socket descriptor */
+if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) { 
+    perror("Can't create socket!");
+    return(1);
 }
 
-int main(int argc, char *argv[])
+
+/* Fill local and remote address structure with zero */
+memset( &local_addr, 0, sizeof(local_addr) );
+memset( &remote_addr, 0, sizeof(remote_addr) );
+
+/* Set values to local_addr structure */
+local_addr.sin_family = AF_INET;
+local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+local_addr.sin_port = htons(PORT);
+
+// set SO_REUSEADDR on a socket to true (1):
+optval = 1;
+setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+
+if ( bind( server, (struct sockaddr *)&local_addr, sizeof(local_addr) ) < 0 )
 {
-    int parentfd;
-    int *childfd;
-    int portno;
-    char *password;
-    int clilen;
-    struct sockaddr_in serveraddr;
-    struct sockaddr_in clientaddr;
-    struct hostent *hostp;
-    char *hostaddrp;
-    int optval;
-    int n;
-    int flags, opt;
-    int nsecs, tfnd;
+    /* could not start server */
+    perror("Bind error");
+    return(1);
+}
 
-    pthread_t thread;
+if ( listen( server, SOMAXCONN ) < 0 ) {
+        perror("listen");
+        exit(1);
+}
 
-    if (argc != 8)
-    {
-        printf("usage: \n ./name server -p <portnumber> -d directory -u password file name\n");
-       exit(EXIT_FAILURE);
+printf("Concurrent  socket server now starting on port %d\n",PORT);
+printf("Wait for connection\n");
+
+while(1) {  // main accept() loop
+    length = sizeof remote_addr;
+    if ((fd = accept(server, (struct sockaddr *)&remote_addr, \
+          &length)) == -1) {
+          perror("Accept Problem!");
+          continue;
     }
 
-    portno = atoi(argv[3]);
-    char *servervalidation = argv[1];
-    if (strcmp(servervalidation, "server") == 0)
-    {
-    }
-    else
-    {
-        printf("for first argument please enter: server\n");
-        exit(EXIT_FAILURE);
-    }
-    char *passworder = argv[7];
-    char *directorys = argv[5];
-    if (chdir(directorys) != 0)
-    {
-        perror("this is not a directory");
-        exit(EXIT_FAILURE);
-    }
+    printf("Server: got connection from %s\n", \
+            inet_ntoa(remote_addr.sin_addr));
 
-    while ((opt = getopt(argc, argv, "pdu:")) != -1)
-    {
-        switch (opt)
-        {
-
-        case 'p':
-
-            break;
-        case 'd':
-            break;
-
-        case 'u':
-
-            break;
-
-        default: /* '?' */
-            printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
-            exit(EXIT_FAILURE);
+    /* If fork create Child, take control over child and close on server side */
+    if ((pid=fork()) == 0) {
+        close(server);
+        if(testing(fd)){
+            programcommand(fd);
         }
+        printf("Child finished their job!\n");
+        close(fd);
+        exit(0);
     }
 
-    if (access(passworder, F_OK) == 0)
-    {
+}
 
-        if (optind >= argc)
-        {
-            fprintf(stderr, "Expected argument after options\n");
-            exit(EXIT_FAILURE);
-        }
+// Final Cleanup
+close(server);
 
-        parentfd = socket(AF_INET, SOCK_STREAM, 0);
-
-        if (parentfd < 0)
-            error("ERROR opening socket");
-
-        optval = 1;
-        setsockopt(parentfd, SOL_SOCKET, SO_REUSEADDR,
-                   (const void *)&optval, sizeof(int));
-
-        bzero((char *)&serveraddr, sizeof(serveraddr));
-
-        serveraddr.sin_family = AF_INET;
-        serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-        serveraddr.sin_port = htons((unsigned short)portno);
-
-        if (bind(parentfd, (struct sockaddr *)&serveraddr,
-                 sizeof(serveraddr)) < 0)
-            error("ERROR on binding");
-
-        if (listen(parentfd, 0) < 0) /* allow 5 requests to queue up */
-            error("ERROR on listen");
-
-        clilen = sizeof(clientaddr);
-        while (true)
-        {
-            int childfd;
-            printf("server listening on localhost port %d\n", ntohs(serveraddr.sin_port));
-
-            childfd = accept(parentfd, (struct sockaddr *)&clientaddr, (socklen_t *)&clilen);
-            if (childfd < 0)
-            {
-                if (errno != EINTR)
-                    error("ERROR on accept");
-                else
-                    continue;
-            }
-
-            pthread_create(&thread, NULL, &Child, &childfd);
-        }
-    }
-    else
-    {
-        printf("ensure the password file is in same directory\n");
-    }
-    return 0;
 }
