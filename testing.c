@@ -17,36 +17,38 @@
 
 #include <errno.h> //for error handling
 
-
 /* Definations */
 #define DEFAULT_BUFLEN 512
 #define PORT 2131
 
-
-void do_job(int fd) {
-int length,rcnt;
-char recvbuf[DEFAULT_BUFLEN],bmsg[DEFAULT_BUFLEN];
-int  recvbuflen = DEFAULT_BUFLEN;
+void do_job(int fd)
+{
+    int length, rcnt;
+    char recvbuf[DEFAULT_BUFLEN], bmsg[DEFAULT_BUFLEN];
+    int recvbuflen = DEFAULT_BUFLEN;
 
     // Receive until the peer shuts down the connection
-    do {
+    do
+    {
         rcnt = recv(fd, recvbuf, recvbuflen, 0);
-        if (rcnt > 0) {
+        if (rcnt > 0)
+        {
             printf("Bytes received: %d\n", rcnt);
 
-        // Echo the buffer back to the sender
-        rcnt = send( fd, recvbuf, rcnt, 0 );
-            if (rcnt < 0) {
+            // Echo the buffer back to the sender
+            rcnt = send(fd, recvbuf, rcnt, 0);
+            if (rcnt < 0)
+            {
                 printf("Send failed:\n");
                 close(fd);
                 break;
             }
             printf("Bytes sent: %d\n", rcnt);
-
         }
         else if (rcnt == 0)
             printf("Connection closing...\n");
-        else  {
+        else
+        {
             printf("Receive failed:\n");
             close(fd);
             break;
@@ -72,13 +74,12 @@ char *copystring(char *d, size_t size, char *s)
     return d;
 }
 
-
 char *lastN(char *str, size_t n)
 {
     size_t len = strlen(str);
     return (char *)str + len - n;
 }
-int testing(int client,char *passwordfile)
+int testing(int client, char *passwordfile)
 {
 
     int length, rcnt, optval, count;
@@ -103,6 +104,7 @@ int testing(int client,char *passwordfile)
                 if (isspace(recvstring[count]))
                     break;
             }
+
             strncpy(recvcmd, recvstring, count);
             strncpy(getcommand, recvstring + count + 1, strlen(recvstring) - (count + 2));
             int counttwo = 0;
@@ -117,7 +119,7 @@ int testing(int client,char *passwordfile)
 
             if (strcmp(recvcmd, "USER") == 0 || strcmp(recvcmd, "user") == 0)
             {
-                FILE *fp ;
+                FILE *fp;
                 int countline = 0;
                 char *val;
 
@@ -164,7 +166,7 @@ int testing(int client,char *passwordfile)
 
     } while (rcnt > 0);
 }
-void programcommand(int client)
+void programcommand(int client, char filedir[DEFAULT_BUFLEN])
 {
     int temp[DEFAULT_BUFLEN], countrow = 1, receivebufferlen = DEFAULT_BUFLEN;
     char data[DEFAULT_BUFLEN];
@@ -184,11 +186,18 @@ void programcommand(int client)
         for (count = 0; count < strlen(recvstring); count++)
         {
             if (isspace(recvstring[count]))
-                break;
-        }
-        strncpy(recvcmd, recvstring, count);
+            {
+                strncpy(recvcmd, recvstring, count);
+                copystring(getcommand, strlen(recvstring) - (count + 2), recvstring + count + 1);
 
-        copystring(getcommand, strlen(recvstring) - (count + 2), recvstring + count + 1);
+                break;
+            }
+
+            else
+            {
+                strncpy(recvcmd, recvstring, count);
+            }
+        }
 
         if (strcmp(recvcmd, "LIST") == 0 || strcmp(recvcmd, "list") == 0)
         {
@@ -336,6 +345,7 @@ void programcommand(int client)
 
             char *bye = "Goodbye\n";
             send(client, bye, strlen(bye), 0);
+            countrow = 0;
 
             close(client);
 
@@ -361,33 +371,33 @@ void programcommand(int client)
 
 int main(int argc, char *argv[])
 {
-int server, client;
-struct sockaddr_in local_addr;
-struct sockaddr_in remote_addr;
-int length,fd,rcnt,optval;
-pid_t pid;
- int *childfd;
+    int server, client;
+    struct sockaddr_in local_addr;
+    struct sockaddr_in remote_addr;
+    int length, fd, rcnt, optval;
+    pid_t pid;
+    int *childfd;
     int portno;
     char *password;
-  int flags, opt;
-   int clilen;
-  
+    int flags, opt;
+    int clilen;
+
     int nsecs, tfnd;
-/* Open socket descriptor */
-if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) { 
-    perror("Can't create socket!");
-    return(1);
-}
-  if (argc != 8)
+    /* Open socket descriptor */
+    if ((server = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("Can't create socket!");
+        return (1);
+    }
+    if (argc != 8)
     {
         printf("usage: \n ./name server -p <portnumber> -d directory -u password file name\n");
         exit(1);
     }
-     portno = atoi(argv[3]);
+    portno = atoi(argv[3]);
     char *servervalidation = argv[1];
     if (strcmp(servervalidation, "server") == 0)
     {
-
     }
     else
     {
@@ -395,18 +405,15 @@ if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
         exit(1);
     }
     char *passworder = argv[7];
+    char *mypassworder = argv[7];
     char *directorys = argv[5];
 
     if (chdir(directorys) != 0)
     {
-           
-        
+
         perror("this is not a directory");
     }
-        char *passworddir = directorys;
-        char *copynew; 
-        strcat(passworddir,"/");
-        strcat(passworddir,passworder);
+    char *passworddir = directorys;
 
     while ((opt = getopt(argc, argv, "pdu:")) != -1)
     {
@@ -428,70 +435,73 @@ if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
             exit(EXIT_FAILURE);
         }
     }
-  if (access(passworddir, F_OK) == 0)
+    if (access(mypassworder, F_OK) == 0)
     {
-        
 
-/* Fill local and remote address structure with zero */
-memset( &local_addr, 0, sizeof(local_addr) );
-memset( &remote_addr, 0, sizeof(remote_addr) );
+        /* Fill local and remote address structure with zero */
+        memset(&local_addr, 0, sizeof(local_addr));
+        memset(&remote_addr, 0, sizeof(remote_addr));
 
-/* Set values to local_addr structure */
-local_addr.sin_family = AF_INET;
-local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-local_addr.sin_port = htons(portno);
+        /* Set values to local_addr structure */
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        local_addr.sin_port = htons(portno);
 
-// set SO_REUSEADDR on a socket to true (1):
-optval = 1;
-setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+        // set SO_REUSEADDR on a socket to true (1):
+        optval = 1;
+        setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 
-if ( bind( server, (struct sockaddr *)&local_addr, sizeof(local_addr) ) < 0 )
-{
-    /* could not start server */
-    perror("Bind error");
-    return(1);
-}
-
-if ( listen( server, SOMAXCONN ) < 0 ) {
-        perror("listen");
-        exit(1);
-}
-
-printf("Concurrent  socket server now starting on port %d\n",portno);
-printf("Wait for connection\n");
-
-while(1) {  // main accept() loop
-    length = sizeof remote_addr;
-    if ((fd = accept(server, (struct sockaddr *)&remote_addr, \
-          &length)) == -1) {
-          perror("Accept Problem!");
-          continue;
-    }
-
-    printf("Server: got connection from %s\n", \
-            inet_ntoa(remote_addr.sin_addr));
-
-    /* If fork create Child, take control over child and close on server side */
-    if ((pid=fork()) == 0) {
-        close(server);
-        if(testing(fd,passworddir)){
-            programcommand(fd);
+        if (bind(server, (struct sockaddr *)&local_addr, sizeof(local_addr)) < 0)
+        {
+            /* could not start server */
+            perror("Bind error");
+            return (1);
         }
-        printf("Child finished their job!\n");
-        close(fd);
-        exit(0);
+
+        if (listen(server, SOMAXCONN) < 0)
+        {
+            perror("listen");
+            exit(1);
+        }
+
+        printf("Concurrent  socket server now starting on port %d\n", portno);
+        printf("Wait for connection\n");
+
+        while (1)
+        { // main accept() loop
+            length = sizeof remote_addr;
+            if ((fd = accept(server, (struct sockaddr *)&remote_addr,
+                             &length)) == -1)
+            {
+                perror("Accept Problem!");
+                continue;
+            }
+
+            printf("Server: got connection from %s\n",
+                   inet_ntoa(remote_addr.sin_addr));
+
+            /* If fork create Child, take control over child and close on server side */
+            if ((pid = fork()) == 0)
+            {
+                close(server);
+
+                if (testing(fd, mypassworder))
+                {
+                    programcommand(fd, argv[5]);
+                }
+                printf("Child finished their job!\n");
+                close(fd);
+                exit(0);
+            }
+        }
+
+        // Final Cleanup
+        close(server);
     }
-
-}
-
-// Final Cleanup
-close(server);
+    else
+    {
+        printf("can't  find  %s file \n", passworder);
+        printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+        exit(EXIT_FAILURE);
     }
-    else{
-        printf("can't  find  %s file \n",passworder);
-            printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
-            exit(EXIT_FAILURE);
-
-    }
-
 }
