@@ -17,36 +17,38 @@
 
 #include <errno.h> //for error handling
 
-
 /* Definations */
 #define DEFAULT_BUFLEN 512
 #define PORT 2131
 
-
-void do_job(int fd) {
-int length,rcnt;
-char recvbuf[DEFAULT_BUFLEN],bmsg[DEFAULT_BUFLEN];
-int  recvbuflen = DEFAULT_BUFLEN;
+void do_job(int fd)
+{
+    int length, rcnt;
+    char recvbuf[DEFAULT_BUFLEN], bmsg[DEFAULT_BUFLEN];
+    int recvbuflen = DEFAULT_BUFLEN;
 
     // Receive until the peer shuts down the connection
-    do {
+    do
+    {
         rcnt = recv(fd, recvbuf, recvbuflen, 0);
-        if (rcnt > 0) {
+        if (rcnt > 0)
+        {
             printf("Bytes received: %d\n", rcnt);
 
-        // Echo the buffer back to the sender
-        rcnt = send( fd, recvbuf, rcnt, 0 );
-            if (rcnt < 0) {
+            // Echo the buffer back to the sender
+            rcnt = send(fd, recvbuf, rcnt, 0);
+            if (rcnt < 0)
+            {
                 printf("Send failed:\n");
                 close(fd);
                 break;
             }
             printf("Bytes sent: %d\n", rcnt);
-
         }
         else if (rcnt == 0)
             printf("Connection closing...\n");
-        else  {
+        else
+        {
             printf("Receive failed:\n");
             close(fd);
             break;
@@ -72,16 +74,15 @@ char *copystring(char *d, size_t size, char *s)
     return d;
 }
 
-
 char *lastN(char *str, size_t n)
 {
     size_t len = strlen(str);
     return (char *)str + len - n;
 }
-int testing(int client,char *passwordfile)
+int testing(int client, char *passwordfile)
 {
 
-    int length, rcnt, optval, count;
+    int length, rcnt, optval;
     char recvbuf[DEFAULT_BUFLEN], bmsg[DEFAULT_BUFLEN];
     char getcommand[DEFAULT_BUFLEN], myuser[DEFAULT_BUFLEN], mypassword[DEFAULT_BUFLEN];
 
@@ -91,21 +92,22 @@ int testing(int client,char *passwordfile)
         // Clear Receive buffer
         memset(&recvbuf, '\0', sizeof(recvbuf));
         rcnt = recv(client, recvbuf, recvbuflen, 0);
-        char *recvstring = (char *)recvbuf;
-        char recvcmd[4];
+        char *gets = (char *)recvbuf;
+        char mycommand[4];
         if (rcnt > 0)
         {
             printf("Bytes received: %d\n", rcnt);
 
-            int count = 0;
-            for (count = 0; count < strlen(recvstring); count++)
+            int i = 0;
+            
+            for (i = 0; i < strlen(gets); i++)
             {
-                if (isspace(recvstring[count]))
+                if (isspace(gets[i]))
                     break;
             }
-            
-            strncpy(recvcmd, recvstring, count);
-            strncpy(getcommand, recvstring + count + 1, strlen(recvstring) - (count + 2));
+
+            strncpy(mycommand, gets, i);
+            strncpy(getcommand, gets + i + 1, strlen(gets) - (i + 2));
             int counttwo = 0;
             for (counttwo = 0; counttwo < strlen(getcommand); counttwo++)
             {
@@ -114,17 +116,17 @@ int testing(int client,char *passwordfile)
             }
 
             strncpy(myuser, getcommand, counttwo);
-            strncpy(mypassword, getcommand + (counttwo + 1), strlen(getcommand) - count);
+            strncpy(mypassword, getcommand + (counttwo + 1), strlen(getcommand) - i);
 
-            if (strcmp(recvcmd, "USER") == 0 || strcmp(recvcmd, "user") == 0)
+            if (strcmp(mycommand, "USER") == 0 || strcmp(mycommand, "user") == 0)
             {
-                FILE *fp ;
+
                 int countline = 0;
                 char *val;
 
                 struct getuserdata userd;
-
-                char line[DEFAULT_BUFLEN] = {0};
+                FILE *fp;
+                char space[DEFAULT_BUFLEN] = {0};
 
                 if (NULL == (fp = fopen(passwordfile, "r")))
                 {
@@ -132,10 +134,10 @@ int testing(int client,char *passwordfile)
                     exit(EXIT_FAILURE);
                 }
 
-                for (; fscanf(fp, "%s", line) != EOF;)
+                for (; fscanf(fp, "%s", space) != EOF;)
                 {
 
-                    val = strtok(line, ":");
+                    val = strtok(space, ":");
                     userd.usernames = val;
                     val = strtok(NULL, ":");
                     if ((val) != NULL)
@@ -167,6 +169,7 @@ int testing(int client,char *passwordfile)
 }
 void programcommand(int client, char filedir[DEFAULT_BUFLEN])
 {
+    char mycommand[4];
     int temp[DEFAULT_BUFLEN], countrow = 1, receivebufferlen = DEFAULT_BUFLEN;
     char data[DEFAULT_BUFLEN];
     FILE *fp;
@@ -175,34 +178,29 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
     while (countrow > 0)
     {
         char sizeofh[DEFAULT_BUFLEN] = {0};
+        int i = 0;
         memset(receivebuffer, 0, strlen(receivebuffer));
         memcpy(temp, receivebuffer, strlen(receivebuffer));
         countrow = recv(client, receivebuffer, receivebufferlen, 0);
-        char recvcmd[4], recvcmdGET[3];
+
         char getcommand[DEFAULT_BUFLEN];
-        char *recvstring = (char *)receivebuffer;
-        int count = 0;
-        for (count = 0; count < strlen(recvstring); count++)
+        char *gets = (char *)receivebuffer;
+
+        for (i = 0; i < strlen(gets); i++)
         {
-            if (isspace(recvstring[count])){
-             strncpy(recvcmd, recvstring, count);
-              copystring(getcommand, strlen(recvstring) - (count + 2), recvstring + count + 1);
+            if (isspace(gets[i]))
+            {
+                strncpy(mycommand, gets, i);
+                copystring(getcommand, strlen(gets) - (i + 2), gets + i + 1);
 
                 break;
-}
-
-          
-
-            
+            }
         }
-       
 
-
-       
-        if (strcmp(recvcmd, "LIST") == 0 || strcmp(recvcmd, "list") == 0)
+        if (strcmp(mycommand, "LIST") == 0 || strcmp(mycommand, "list") == 0)
         {
 
-            memset(recvcmd, 0, strlen(recvcmd));
+            memset(mycommand, 0, strlen(mycommand));
             DIR *v;
             struct dirent *directory;
             v = opendir(".");
@@ -216,7 +214,7 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
                 closedir(v);
             }
         }
-        else if (strcmp(recvcmd, "PUT") == 0 || strcmp(recvcmd, "put") == 0)
+        else if (strcmp(mycommand, "PUT") == 0 || strcmp(mycommand, "put") == 0)
         {
             int n;
             FILE *fp;
@@ -275,7 +273,7 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
                 return;
             }
         }
-        else if (strcmp(recvcmd, "DEL") == 0 || strcmp(recvcmd, "del") == 0)
+        else if (strcmp(mycommand, "DEL") == 0 || strcmp(mycommand, "del") == 0)
         {
             if (remove(getcommand) == 0)
             {
@@ -309,7 +307,7 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
             }
         }
 
-        else if (strcmp(recvcmd, "GET") == 0 || strcmp(recvcmd, "get") == 0)
+        else if (strcmp(mycommand, "GET") == 0 || strcmp(mycommand, "get") == 0)
         {
 
             fp = fopen(getcommand, "r");
@@ -340,13 +338,12 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
                 break;
             }
         }
-        else if (strcmp(recvcmd, "QUIT") == 0 || strcmp(recvcmd, "quit") == 0)
+        else if (strcmp(mycommand, "QUIT") == 0 || strcmp(mycommand, "quit") == 0)
         {
 
             char *bye = "Goodbye\n";
             send(client, bye, strlen(bye), 0);
-            countrow =0;
-            
+            countrow = 0;
 
             close(client);
 
@@ -355,7 +352,7 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
         else
         {
             char dataToSend[150] = "400 ";
-            strcat(dataToSend, recvcmd);
+            strcat(dataToSend, mycommand);
             strcat(dataToSend, " Command not implemented");
             strcat(dataToSend, "\n");
             int l = 0;
@@ -372,33 +369,33 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
 
 int main(int argc, char *argv[])
 {
-int server, client;
-struct sockaddr_in local_addr;
-struct sockaddr_in remote_addr;
-int length,fd,rcnt,optval;
-pid_t pid;
- int *childfd;
+    int server, client;
+    struct sockaddr_in local_addr;
+    struct sockaddr_in remote_addr;
+    int length, fd, rcnt, optval;
+    pid_t pid;
+    int *childfd;
     int portno;
     char *password;
-  int flags, opt;
-   int clilen;
-  
+    int flags, opt;
+    int clilen;
+
     int nsecs, tfnd;
-/* Open socket descriptor */
-if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) { 
-    perror("Can't create socket!");
-    return(1);
-}
-  if (argc != 8)
+    /* Open socket descriptor */
+    if ((server = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("Can't create socket!");
+        return (1);
+    }
+    if (argc != 8)
     {
         printf("usage: \n ./name server -p <portnumber> -d directory -u password file name\n");
         exit(1);
     }
-     portno = atoi(argv[3]);
+    portno = atoi(argv[3]);
     char *servervalidation = argv[1];
     if (strcmp(servervalidation, "server") == 0)
     {
-
     }
     else
     {
@@ -411,13 +408,10 @@ if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
 
     if (chdir(directorys) != 0)
     {
-           
-        
+
         perror("this is not a directory");
     }
-        char *passworddir = directorys;
-       
-       
+    char *passworddir = directorys;
 
     while ((opt = getopt(argc, argv, "pdu:")) != -1)
     {
@@ -439,73 +433,75 @@ if ((server = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
             exit(EXIT_FAILURE);
         }
     }
-  if (access(mypassworder, F_OK) == 0)
+    if (access(mypassworder, F_OK) == 0)
     {
-        
 
-/* Fill local and remote address structure with zero */
-memset( &local_addr, 0, sizeof(local_addr) );
-memset( &remote_addr, 0, sizeof(remote_addr) );
+        /* Fill local and remote address structure with zero */
+        memset(&local_addr, 0, sizeof(local_addr));
+        memset(&remote_addr, 0, sizeof(remote_addr));
 
-/* Set values to local_addr structure */
-local_addr.sin_family = AF_INET;
-local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-local_addr.sin_port = htons(portno);
+        /* Set values to local_addr structure */
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        local_addr.sin_port = htons(portno);
 
-// set SO_REUSEADDR on a socket to true (1):
-optval = 1;
-setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
+        // set SO_REUSEADDR on a socket to true (1):
+        optval = 1;
+        setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval);
 
-if ( bind( server, (struct sockaddr *)&local_addr, sizeof(local_addr) ) < 0 )
-{
-    /* could not start server */
-    perror("Bind error");
-    return(1);
-}
-
-if ( listen( server, SOMAXCONN ) < 0 ) {
-        perror("listen");
-        exit(1);
-}
-
-printf("Concurrent  socket server now starting on port %d\n",portno);
-printf("Wait for connection\n");
-
-while(1) {  // main accept() loop
-    length = sizeof remote_addr;
-    if ((fd = accept(server, (struct sockaddr *)&remote_addr, \
-          &length)) == -1) {
-          perror("Accept Problem!");
-          continue;
-    }
-
-    printf("Server: got connection from %s\n", \
-            inet_ntoa(remote_addr.sin_addr));
-
-    /* If fork create Child, take control over child and close on server side */
-    if ((pid=fork()) == 0) {
-        close(server);
-         
-            char *sender = "Welcome to Bob server\n";
-    send(fd, sender, strlen(sender), 0);
-        if(testing(fd,mypassworder)){
-            programcommand(fd,argv[5]);
+        if (bind(server, (struct sockaddr *)&local_addr, sizeof(local_addr)) < 0)
+        {
+            /* could not start server */
+            perror("Bind error");
+            return (1);
         }
-        printf("Child finished their job!\n");
-        close(fd);
-        exit(0);
+
+        if (listen(server, SOMAXCONN) < 0)
+        {
+            perror("listen");
+            exit(1);
+        }
+
+        printf("Concurrent  socket server now starting on port %d\n", portno);
+        printf("Wait for connection\n");
+
+        while (1)
+        { // main accept() loop
+            length = sizeof remote_addr;
+            if ((fd = accept(server, (struct sockaddr *)&remote_addr,
+                             &length)) == -1)
+            {
+                perror("Accept Problem!");
+                continue;
+            }
+
+            printf("Server: got connection from %s\n",
+                   inet_ntoa(remote_addr.sin_addr));
+
+            /* If fork create Child, take control over child and close on server side */
+            if ((pid = fork()) == 0)
+            {
+                close(server);
+
+                char *sender = "Welcome to Bob server\n";
+                send(fd, sender, strlen(sender), 0);
+                if (testing(fd, mypassworder))
+                {
+                    programcommand(fd, argv[5]);
+                }
+                printf("Child finished their job!\n");
+                close(fd);
+                exit(0);
+            }
+        }
+
+        // Final Cleanup
+        close(server);
     }
-
-}
-
-// Final Cleanup
-close(server);
+    else
+    {
+        printf("can't  find  %s file \n", passworder);
+        printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
+        exit(EXIT_FAILURE);
     }
-    else{
-        printf("can't  find  %s file \n",passworder);
-            printf("usage: \n ./name server -p <portnumber> -d directory -u password.txt\n");
-            exit(EXIT_FAILURE);
-
-    }
-
 }
