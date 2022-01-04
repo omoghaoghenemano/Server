@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
     if (argc != 8)
     {
         printf("usage: \n ./name server -p <portnumber> -d directory -u password file name\n");
-        exit(1);
+       exit(EXIT_FAILURE);
     }
 
     portno = atoi(argv[3]);
@@ -423,13 +423,14 @@ int main(int argc, char *argv[])
     else
     {
         printf("for first argument please enter: server\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     char *passworder = argv[7];
     char *directorys = argv[5];
     if (chdir(directorys) != 0)
     {
         perror("this is not a directory");
+        exit(EXIT_FAILURE);
     }
 
     while ((opt = getopt(argc, argv, "pdu:")) != -1)
