@@ -31,14 +31,17 @@ struct getuserdata
 };
 //reference for copystring https://stackoverflow.com/questions/41869803/what-is-the-best-alternative-to-strncpy
 
+char *copystring(char *d, size_t size, char *s)
+{
+    size_t ma;
+    for (ma = 0; ma < size && s[ma]; ma++)
+    {
+        d[ma] = s[ma];
+    }
+    d[ma] = '\0';
 
-char *copystring(char *d, size_t size, char *s) {
-      if (size > 0) {
-          *d = '\0';
-          return strncat(d, s, size - 1);
-      }
-      return d;
-  }
+    return d;
+}
 
 
 char *lastN(char *str, size_t n)
@@ -333,6 +336,26 @@ void programcommand(int client, char filedir[DEFAULT_BUFLEN])
                 l++;
             }
             send(client, dataToSend, l, 0);
+        }
+        if (countrow > 0) {
+            printf("Bytes received: %d\n", countrow);
+
+        // Echo the buffer back to the sender
+        
+            if (countrow < 0) {
+                printf("Send failed:\n");
+                close(client);
+                break;
+            }
+            printf("Bytes sent: %d\n", countrow);
+
+        }
+        else if (countrow == 0)
+            printf("Connection closing...\n");
+        else  {
+            printf("Receive failed:\n");
+            close(client);
+            break;
         }
         countrow++;
     }
